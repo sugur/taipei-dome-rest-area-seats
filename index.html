@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta property="og:title" content="西二東二 · 大巨蛋座位區查詢">
+<meta property="og:title" content="西二東二 · 大巨蛋座位區查詢 v1_1104">
 <meta property="og:image" content="https://sugur.github.io/taipei-dome-rest-area-seats/preview.jpg?v=1">
-<title>大巨蛋座位查詢</title>
+<title>西二東二 · 大巨蛋座位區查詢 v1_1104</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
@@ -62,6 +62,12 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid var(-
 .go{height:56px;padding:0 26px;border:0;border-radius:10px;background:var(--signal);color:var(--signal-ink);font:900 20px var(--f-display)}
 .chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:12px;color:var(--muted)}
 .chips button{border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:99px;padding:3px 10px;font:500 13px var(--f-mono)}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:0;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px}
+.tabs button{border:0;background:transparent;border-radius:9px;padding:10px 0;font:800 1.05rem var(--f-body);color:var(--muted)}
+.tabs button.on{background:var(--brown);color:#fff}
+.pane{display:grid;gap:18px}.pane[hidden]{display:none}.pane>*{min-width:0}
+.allp{overflow:hidden;padding:0}
+#allf{display:block;width:100%;height:min(86vh,940px);border:0}
 .err{color:#d23b3b;font-weight:700;font-size:14px}
 
 .result{padding:18px;display:grid;gap:14px}
@@ -96,6 +102,12 @@ ol.steps b{color:var(--route)}
 .lbl ellipse{stroke-width:.8}
 .lbl.lb ellipse{fill:#2f6fd6;stroke:#fff}.lbl.lb text{fill:#fff}
 .lbl.lw ellipse{fill:#fff6c2;stroke:#e0b000;stroke-width:1.2}.lbl.lw text{fill:#14213a}
+.lbl.lw.ld text{fill:#d0021b}.lbl.lb.ld text{fill:#ff2b2b;stroke:#fff;stroke-width:1.3px;paint-order:stroke}
+.lbl.on.ld text{fill:#fff;stroke:none}
+.lbl.on ellipse{animation:meblink 1s ease-in-out infinite}
+@keyframes meblink{0%,100%{fill:#ff7a00;stroke:#fff}50%{fill:#ffe0b8;stroke:#ff7a00}}
+.lbl.on text{animation:metxt 1s ease-in-out infinite}
+@keyframes metxt{0%,100%{fill:#fff}50%{fill:#b34700}}
 .lbl.hide{display:none}
 .lbl.on ellipse{fill:var(--hit);stroke:#fff;stroke-width:1.2}.lbl.on text{fill:#fff}
 .dot{fill:transparent;cursor:pointer}
@@ -202,7 +214,7 @@ ol.steps b{color:var(--route)}
 
   <form class="search-box" id="q" autocomplete="off">
     <div class="search-row">
-      <input type="text" id="idInput" placeholder="輸入身分證編號，例如 3-29" list="idList" autocomplete="off" aria-label="身分證編號">
+      <input type="text" id="idInput" placeholder="輸入身分證編號，例如 3-29" autocomplete="off" aria-label="身分證編號">
       <div class="side" role="radiogroup" aria-label="東西區">
         <label><input type="radio" name="side" id="sideE" value="E" checked><span>東二</span></label>
         <label><input type="radio" name="side" id="sideW" value="W"><span>西二</span></label>
@@ -216,6 +228,11 @@ ol.steps b{color:var(--route)}
 
   <div id="out" hidden>
   <section class="result panel" id="res" aria-live="polite"></section>
+  <div class="tabs" role="tablist" aria-label="查詢結果">
+    <button type="button" role="tab" id="tabNav" aria-selected="true" class="on">位置引導</button>
+    <button type="button" role="tab" id="tabAll" aria-selected="false">全景</button>
+  </div>
+  <div id="paneNav" class="pane">
 
   <section class="panel">
     <div class="maphead"><div class="mt"><h2 id="ovTitle"></h2><div class="maplegend"><span><i class="ln ln-o"></i>Gate 5 到休息區路線</span><span id="lgEnter"><i class="ln ln-g"></i>休息區到進場演繹路線</span></div></div>
@@ -250,6 +267,10 @@ ol.steps b{color:var(--route)}
     <div class="legend"><span><i style="background:var(--blue-soft)"></i>藍衣</span><span><i style="background:var(--white-seat)"></i>白衣</span><span style="color:#d23b3b;font-weight:700" id="leadLegend"></span></div>
     <div class="scroll"><div class="grid" id="grid"></div></div>
   </section>
+  </div>
+  <div id="paneAll" class="pane" hidden>
+    <section class="panel allp"><iframe id="allf" title="大巨蛋全區座位圖" loading="lazy"></iframe></section>
+  </div>
   </div>
 
   <footer class="foot">
@@ -379,6 +400,8 @@ function Viewer(svgEl,rotEl,onUser){
   const V={vb:{x:0,y:0,w:1,h:1},base:{x:0,y:0,w:1,h:1},ang:0,moved:false};
   const c=()=>({x:V.base.x+V.base.w/2,y:V.base.y+V.base.h/2});
   const apply=v=>{V.vb=v;svgEl.setAttribute("viewBox",`${v.x} ${v.y} ${v.w} ${v.h}`)};
+  const cl=(p,s,a,b)=>s>=b?a+(b-s)/2:Math.min(a+b-s,Math.max(a,p));
+  const clamp=v=>{const F=V.full();return {x:cl(v.x,v.w,F.x,F.w),y:cl(v.y,v.h,F.y,F.h),w:v.w,h:v.h}};
   V.set=(v,anim)=>{
     if(!anim)return apply(v);
     const a={...V.vb},t0=performance.now(),Dur=matchMedia("(prefers-reduced-motion:reduce)").matches?0:450;
@@ -397,7 +420,7 @@ function Viewer(svgEl,rotEl,onUser){
   V.rotate=()=>{V.ang=(V.ang+90)%360;xf();V.showAll(false)};
   const zoomAt=(cx,cy,k)=>{const r=svgEl.getBoundingClientRect(),vb=V.vb,F=V.full();
     const px=vb.x+(cx-r.left)/r.width*vb.w,py=vb.y+(cy-r.top)/r.height*vb.h;
-    const w=Math.min(F.w*1.6,Math.max(F.w/14,vb.w*k)),h=w*vb.h/vb.w;apply({x:px-(px-vb.x)*w/vb.w,y:py-(py-vb.y)*h/vb.h,w,h});onUser&&onUser()};
+    const w=Math.min(F.w*1.6,Math.max(F.w/14,vb.w*k)),h=w*vb.h/vb.w;apply(clamp({x:px-(px-vb.x)*w/vb.w,y:py-(py-vb.y)*h/vb.h,w,h}));onUser&&onUser()};
   svgEl.addEventListener("wheel",e=>{e.preventDefault();zoomAt(e.clientX,e.clientY,e.deltaY>0?1.15:1/1.15)},{passive:false});
   let ptrs=new Map(),start=null,pinch=0;
   svgEl.addEventListener("pointerdown",e=>{ptrs.set(e.pointerId,e);V.moved=false;start={x:e.clientX,y:e.clientY,vb:{...V.vb}};
@@ -407,7 +430,7 @@ function Viewer(svgEl,rotEl,onUser){
     if(ptrs.size===2){const [a,b]=[...ptrs.values()];const d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);
       if(pinch){zoomAt((a.clientX+b.clientX)/2,(a.clientY+b.clientY)/2,pinch/d);pinch=d;V.moved=true}return}
     const dx=e.clientX-start.x,dy=e.clientY-start.y;if(Math.abs(dx)+Math.abs(dy)>4&&!V.moved){V.moved=true;svgEl.setPointerCapture(e.pointerId)}
-    if(V.moved){apply({...start.vb,x:start.vb.x-dx/r.width*start.vb.w,y:start.vb.y-dy/r.height*start.vb.h});onUser&&onUser()}});
+    if(V.moved){apply(clamp({...start.vb,x:start.vb.x-dx/r.width*start.vb.w,y:start.vb.y-dy/r.height*start.vb.h}));onUser&&onUser()}});
   ["pointerup","pointercancel"].forEach(t=>svgEl.addEventListener(t,e=>{ptrs.delete(e.pointerId);if(ptrs.size<2)pinch=0;
     if(ptrs.size===1){const p=[...ptrs.values()][0];start={x:p.clientX,y:p.clientY,vb:{...V.vb}}}
     setTimeout(()=>{if(!ptrs.size)V.moved=false},0)}));
@@ -427,7 +450,7 @@ function setSide(k){
   ["lbls","dots","marks","hl","flowArrow"].forEach(i=>$(i).innerHTML="");lblMap={};
   const sc=D.ls||1;svg.setAttribute("class",D.big?"big":sc<1?"small":"");
   D.seats.forEach(s=>{
-    const t=el("g",{class:"lbl "+(isBlue(s.id)?"lb":"lw"),transform:`rotate(${s.rot} ${s.x} ${s.y}) translate(${s.x} ${s.y}) scale(${sc}) translate(${-s.x} ${-s.y})`},$("lbls"));
+    const t=el("g",{class:"lbl "+(isBlue(s.id)?"lb":"lw")+(D.lead&&D.lead[s.id]?" ld":""),transform:`rotate(${s.rot} ${s.x} ${s.y}) translate(${s.x} ${s.y}) scale(${sc}) translate(${-s.x} ${-s.y})`},$("lbls"));
     el("ellipse",{cx:s.x,cy:s.y,rx:9.6,ry:8.2*(D.ry||1)},t);
     el("text",{x:s.x,y:s.y+2.1,"text-anchor":"middle"},t).textContent=s.id;
     lblMap[s.id]=t;
@@ -478,11 +501,20 @@ function setSide(k){
   fillList(D.side);
 }
 
+let curSel=null;
+function sendAll(){const f=$("allf");if(!curSel)return;
+  if(!f.getAttribute("src")){f.src=`all.html?embed=1&s=${curSel.side}&id=${encodeURIComponent(curSel.id)}`;return}
+  try{f.contentWindow.postMessage({type:"seat",side:curSel.side,id:curSel.id},"*")}catch(e){}}
+function setTab(all){$("tabNav").classList.toggle("on",!all);$("tabAll").classList.toggle("on",all);
+  $("tabNav").setAttribute("aria-selected",!all);$("tabAll").setAttribute("aria-selected",all);
+  $("paneNav").hidden=all;$("paneAll").hidden=!all;if(all)sendAll();else dispatchEvent(new Event("resize"))}
+$("tabNav").onclick=()=>setTab(false);$("tabAll").onclick=()=>setTab(true);
 function lookup(k,id){
   const D=SIDES[k],s=D.byId[id];
   if(!s){$("err").hidden=false;$("err").textContent=`${D.ch}${id} 不在${D.area}區（${D.entry.label}）。請確認東二／西二選擇和身分證編號，或洽現場人員。`;return}
   setSide(k);
   $("err").hidden=true;$("out").hidden=false;$(D.side==="E"?"sideE":"sideW").checked=true;cur=s;
+  curSel={side:D.side,id};if(!$("paneAll").hidden)sendAll();
   $("idInput").value=D.ch+id;
   const I=info(k,s),lead=D.lead[id];
   $("res").innerHTML=`<div class="rhead"><div class="seatno"><span class="side-ch">${D.ch}</span>${id}</div><div class="badges">
